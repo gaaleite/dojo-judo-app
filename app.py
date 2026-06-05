@@ -12,32 +12,23 @@ st.set_page_config(page_title="Judô Gestão", layout="centered")
 if not os.path.exists("fotos_alunos"):
     os.makedirs("fotos_alunos")
 
-# --- NOME DO BANCO DE DADOS OFICIAL ---
-NOME_BANCO = "judo_v3.db"
+# --- NOME DO BANCO DE DADOS ---
+NOME_BANCO = "judo_v4.db"
 
-# --- FUNÇÃO DE SINCRONIZAÇÃO SEGURA COM GITHUB SECRETS ---
+# --- FUNÇÃO DE SINCRONIZAÇÃO SEGURA COM GITHUB ---
 def salvar_dados_no_github():
-    # Verifica se as chaves secretas foram cadastradas no painel do Streamlit
     if "GITHUB_TOKEN" in st.secrets and "REPO_URL" in st.secrets:
         try:
             token = st.secrets["GITHUB_TOKEN"]
             repo_url = st.secrets["REPO_URL"]
-            
-            # Formata a URL do repositório injetando o Token de autenticação de escrita
             authenticated_url = repo_url.replace("https://", f"https://x-oauth-basic:{token}@")
             
-            # Configura o Git temporário do servidor
             subprocess.run(["git", "config", "--global", "user.email", "dojo_bot@email.com"], check=True)
             subprocess.run(["git", "config", "--global", "user.name", "Dojo Bot"], check=True)
-            
-            # Adiciona as alterações locais do banco e das fotos
             subprocess.run(["git", "add", NOME_BANCO, "fotos_alunos/*"], check=True)
-            subprocess.run(["git", "commit", "-m", "Auto-update: Dados do Dojo salvos com sucesso"], check=True)
-            
-            # Envia as alterações direto para o GitHub de forma autenticada
+            subprocess.run(["git", "commit", "-m", "Auto-update: Dados do Dojo salvos com sucesso v4"], check=True)
             subprocess.run(["git", "push", authenticated_url], check=True)
         except Exception as e:
-            # Silencia erros para não travar a experiência do usuário se o push falhar temporariamente
             pass
 
 # --- CONEXÃO COM O BANCO DE DADOS ---
@@ -223,7 +214,17 @@ with aba_lista:
             st.write("📈 **Rendimento Geral**")
             novo_rendimento = st.selectbox("Nível de Rendimento nas Aulas:", lista_rendimento, index=lista_rendimento.index(p_rendimento), key=f"rendimento_{aluno_id}")
             
+            # --- TÓPICO PONTOS A MELHORAR DEFINTIVO (CAIXA DE TEXTO MULTILINHA ESTÁVEL) ---
             st.markdown("---")
-            st.write("🎯 **Pontos a Melhorar**")
+            st.write("🎯 **Pontos a Melhorar (Escreva cada ponto em uma linha)**")
             
-            linhas_melhoria = [linha.strip() for linha in p_melhorias.split("\n")]
+            # Caixa de texto nativa do Streamlit com suporte a múltiplas linhas estável
+            string_melhorias_final = st.text_area(
+                label="Melhorias do aluno:",
+                value=p_melhorias,
+                key=f"text_area_melhorias_{aluno_id}",
+                placeholder="Exemplo:\n- Ajustar a pegada de gola\n- Melhorar equilíbrio no O-Goshi",
+                label_visibility="collapsed",
+                height=120
+            )
+            
