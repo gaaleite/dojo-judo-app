@@ -227,4 +227,31 @@ with aba_lista:
                 label_visibility="collapsed",
                 height=120
             )
+
+# --- ADICIONE ESTE BLOCO LOGO ABAIXO DA CAIXA DE TEXTO ---
+            st.markdown("---")
+            btn_col1, btn_col2 = st.columns(2)
+            
+            with btn_col1:
+                if st.button("💾 Salvar Ficha", key=f"btn_{aluno_id}", use_container_width=True):
+                    cursor.execute("UPDATE alunos SET faixa = ? WHERE id = ?", (nova_faixa, aluno_id))
+                    cursor.execute('''
+                        INSERT OR REPLACE INTO proficiencia (aluno_id, nage_waza, katame_waza, rendimento, melhorias)
+                        VALUES (?, ?, ?, ?, ?)
+                    ''', (aluno_id, novo_nage, novo_katame, novo_rendimento, string_melhorias_final))
+                    conn.commit()
+                    salvar_dados_no_github()
+                    st.success("Ficha atualizada com sucesso!")
+                    st.rerun()
+                    
+            with btn_col2:
+                if st.button("❌ Excluir Aluno", key=f"del_{aluno_id}", use_container_width=True):
+                    cursor.execute("DELETE FROM alunos WHERE id = ?", (aluno_id,))
+                    conn.commit()
+                    if a_foto and os.path.exists(a_foto):
+                        try: os.remove(a_foto)
+                        except: pass
+                    salvar_dados_no_github()
+                    st.warning("Aluno removido.")
+                    st.rerun()
             
