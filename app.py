@@ -155,7 +155,7 @@ with aba_lista:
     alunos = cursor.fetchall()
     opcoes_nivel = ["Nenhum", "Básico", "Intermediário", "Graduado", "Graduado Superior"]
     
-    if not alunos:
+    if not alumnos:
         st.info("Nenhum aluno encontrado.")
     
     for aluno in alunos:
@@ -214,8 +214,8 @@ with aba_lista:
             st.markdown("---")
             st.write("🎯 **Pontos a Melhorar**")
             
-            # Converte o texto salvo em lista. Se estiver vazio, garante 1 linha em branco inicial
-            linhas_melhoria = [linha.strip() for linha in p_melhorias.split("\n")]
+            # Converte o texto em lista. Se vazio, garante 1 linha em branco inicial
+            linhas_melhoria = [linha.strip() for line in p_melhorias.split("\n")]
             if not linhas_melhoria or (len(linhas_melhoria) == 1 and linhas_melhoria[0] == ""):
                 linhas_melhoria = [""]
                 
@@ -228,3 +228,4 @@ with aba_lista:
                 col_btn_x, col_btn_plus, col_input = st.columns([0.15, 0.15, 0.70])
                 
                 with col_btn_x:
+                    if st.button("❌", key=f"del_row_{aluno_id}_{idx}"):
