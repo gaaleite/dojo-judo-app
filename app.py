@@ -159,72 +159,75 @@ with aba_lista:
     alunos = cursor.fetchall()
     opcoes_nivel = ["Nenhum", "Básico", "Intermediário", "Graduado", "Graduado Superior"]
     
+    # --- DICIONÁRIOS TEMPORÁRIOS PARA CAPTURAR DADOS ALTERADOS ---
+    dados_faixas = {}
+    dados_nage = {}
+    dados_katame = {}
+    dados_rendimento = {}
+    dados_melhorias = {}
+    alunos_selecionados_exclusao = []
+    
     if not alunos:
         st.info("Nenhum aluno encontrado.")
-    
-    for aluno in alunos:
-        aluno_id, a_nome, a_idade, a_altura, a_peso, a_foto, a_faixa, n_waza, k_waza, p_rendimento, p_melhorias = aluno
+    else:
+        # BOTÕES PRINCIPAIS E FIXOS NA PARTE SUPERIOR DA ABA DE LISTAGEM
+        topo_col1, topo_col2 = st.columns(2)
         
-        if not a_faixa or a_faixa not in lista_graduacoes: a_faixa = "Branca (Iniciante)"
-        if not n_waza: n_waza = "Nenhum"
-        if not k_waza: k_waza = "Nenhum"
-        if not p_rendimento or p_rendimento not in lista_rendimento: p_rendimento = "Médio"
-        if not p_melhorias: p_melhorias = ""
+        with topo_col1:
+            gravar_todos = st.button("💾 Salvar Alterações", key="salvar_mestre_global", use_container_width=True, type="primary")
+        with topo_col2:
+            excluir_selecionados = st.button("❌ Deletar Selecionados", key="excluir_mestre_global", use_container_width=True)
+            
+        st.markdown("---")
         
-        emoji_cor = obter_emoji_faixa(a_faixa)
-        
-        with st.expander(f"{emoji_cor} {a_nome} | {a_faixa}"):
-            col1, col2 = st.columns(2)
-            with col1:
-                if a_foto and os.path.exists(a_foto):
-                    st.image(a_foto, width=110)
-                    nova_foto = st.file_uploader("🔄 Alterar foto", type=["png", "jpg", "jpeg"], key=f"change_pic_{aluno_id}")
-                else:
-                    st.warning("⚠️ Sem foto")
-                    nova_foto = st.file_uploader("📸 Adicionar foto", type=["png", "jpg", "jpeg"], key=f"add_pic_{aluno_id}")
-                
-                if nova_foto is not None:
+        # RENDERIZAÇÃO INDIVIDUAL DOS ALUNOS
+        for aluno in alunos:
+            aluno_id, a_nome, a_idade, a_altura, a_peso, a_foto, a_faixa, n_waza, k_waza, p_rendimento, p_melhorias = aluno
+            
+            if not a_faixa or a_faixa not in lista_graduacoes: a_faixa = "Branca (Iniciante)"
+            if not n_waza: n_waza = "Nenhum"
+            if not k_waza: k_waza = "Nenhum"
+            if not p_rendimento or p_rendimento not in lista_rendimento: p_rendimento = "Médio"
+            if not p_melhorias: p_melhorias = ""
+            
+            emoji_cor = obter_emoji_faixa(a_faixa)
+            
+            with st.expander(f"{emoji_cor} {a_nome} | {a_faixa}"):
+                # Caixa de seleção para marcar o aluno para exclusão em lote
+                if st.checkbox("Selecionar este aluno para exclusão", key=f"check_del_{aluno_id}"):
+                    alunos_selecionados_exclusao.append((aluno_id, a_foto))
+                    
+                col1, col2 = st.columns(2)
+                with col1:
                     if a_foto and os.path.exists(a_foto):
-                        try: os.remove(a_foto)
-                        except: pass
-                    novo_caminho = f"fotos_alunos/{int(time.time())}_{a_nome.replace(' ', '_').lower()}.jpg"
-                    image = Image.open(nova_foto)
-                    image.save(novo_caminho)
-                    cursor.execute("UPDATE alunos SET foto_path = ? WHERE id = ?", (novo_caminho, aluno_id))
-                    conn.commit()
-                    salvar_dados_no_github()
-                    st.success("Foto atualizada!")
-                    st.rerun()
-            
-            with col2:
-                st.write(f"**Idade:** {a_idade} anos")
-                st.write(f"**Altura:** {a_altura}m")
-                st.write(f"**Peso:** {a_peso}kg")
-            
-            st.markdown("---")
-            st.write("🏅 **Graduação do Aluno**")
-            nova_faixa = st.selectbox("Selecione a Graduação Atual:", lista_graduacoes, index=lista_graduacoes.index(a_faixa), key=f"faixa_{aluno_id}")
-            
-            st.markdown("---")
-            st.write("🥋 **Proficiência de Técnicas (Waza)**")
-            novo_nage = st.selectbox("Nage-Waza (Projeção):", opcoes_nivel, index=opcoes_nivel.index(n_waza), key=f"nage_{aluno_id}")
-            novo_katame = st.selectbox("Katame-Waza (Controle):", opcoes_nivel, index=opcoes_nivel.index(k_waza), key=f"katame_{aluno_id}")
-            
-            st.markdown("---")
-            st.write("📈 **Rendimento Geral**")
-            novo_rendimento = st.selectbox("Nível de Rendimento nas Aulas:", lista_rendimento, index=lista_rendimento.index(p_rendimento), key=f"rendimento_{aluno_id}")
-            
-            # --- TÓPICO PONTOS A MELHORAR DEFINTIVO (CAIXA DE TEXTO MULTILINHA ESTÁVEL) ---
-            st.markdown("---")
-            st.write("🎯 **Pontos a Melhorar (Escreva cada ponto em uma linha)**")
-            
-            # Caixa de texto nativa do Streamlit com suporte a múltiplas linhas estável
-            string_melhorias_final = st.text_area(
-                label="Melhorias do aluno:",
-                value=p_melhorias,
-                key=f"text_area_melhorias_{aluno_id}",
-                placeholder="Exemplo:\n- Ajustar a pegada de gola\n- Melhorar equilíbrio no O-Goshi",
-                label_visibility="collapsed",
-                height=120
-            )
-            
+                        st.image(a_foto, width=110)
+                        nova_foto = st.file_uploader("🔄 Alterar foto", type=["png", "jpg", "jpeg"], key=f"change_pic_{aluno_id}")
+                    else:
+                        st.warning("⚠️ Sem foto")
+                        nova_foto = st.file_uploader("📸 Adicionar foto", type=["png", "jpg", "jpeg"], key=f"add_pic_{aluno_id}")
+                    
+                    if nova_foto is not None:
+                        if a_foto and os.path.exists(a_foto):
+                            try: os.remove(a_foto)
+                            except: pass
+                        novo_caminho = f"fotos_alunos/{int(time.time())}_{a_nome.replace(' ', '_').lower()}.jpg"
+                        image = Image.open(nova_foto)
+                        image.save(novo_caminho)
+                        cursor.execute("UPDATE alunos SET foto_path = ? WHERE id = ?", (novo_caminho, aluno_id))
+                        conn.commit()
+                        salvar_dados_no_github()
+                        st.success("Foto atualizada!")
+                        st.rerun()
+                
+                with col2:
+                    st.write(f"**Idade:** {a_idade} anos")
+                    st.write(f"**Altura:** {a_altura}m")
+                    st.write(f"**Peso:** {a_peso}kg")
+                
+                st.markdown("---")
+                st.write("🏅 **Graduação do Aluno**")
+                nova_faixa = st.selectbox("Selecione a Graduação Atual:", lista_graduacoes, index=lista_graduacoes.index(a_faixa), key=f"faixa_{aluno_id}")
+                dados_faixas[aluno_id] = nova_faixa
+                
+                st.markdown("---")
+                st.write("🥋 **Proficiência de Técnicas (Waza)**")
