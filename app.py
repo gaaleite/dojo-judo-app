@@ -56,7 +56,7 @@ def conectar_bd():
     ''')
     
     cursor.execute("PRAGMA table_info(proficiencia)")
-    colunas_p = [col[1] for col in cursor.fetchall()]
+    colunas_p = [col for col in cursor.fetchall()]
     
     if 'rendimento' not in colunas_p:
         cursor.execute("ALTER TABLE proficiencia ADD COLUMN rendimento TEXT DEFAULT 'Médio'")
@@ -195,7 +195,7 @@ with aba_lista:
                     cursor.execute("UPDATE alunos SET foto_path = ? WHERE id = ?", (novo_caminho, aluno_id))
                     conn.commit()
                     salvar_dados_no_github()
-                    st.success("Foto updated!")
+                    st.success("Foto atualizada!")
                     st.rerun()
             
             with col2:
@@ -216,17 +216,18 @@ with aba_lista:
             st.write("📈 **Rendimento Geral**")
             novo_rendimento = st.selectbox("Nível de Rendimento nas Aulas:", lista_rendimento, index=lista_rendimento.index(p_rendimento), key=f"rendimento_{aluno_id}")
             
-            # --- TÓPICO 2: LISTA DE MELHORIAS DINÂMICA CORRIGIDA (SEM REPETIÇÃO) ---
             st.markdown("---")
             st.write("🎯 **Pontos a Melhorar**")
             
             itens_melhoria = [item.strip() for item in p_melhorias.split("\n") if item.strip()]
             itens_restantes = []
             
-            # Exibe as linhas existentes com opção estável de exclusão
+            # Correção de indentação aplicada aqui na exibição dos itens e botões
             for idx, item in enumerate(itens_melhoria):
                 m_col1, m_col2 = st.columns([0.15, 0.85])
                 with m_col1:
                     if st.button("❌", key=f"del_item_{aluno_id}_{idx}"):
                         continue
                 with m_col2:
+                    st.write(f"• {item}")
+                itens_restantes.append(item)
