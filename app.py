@@ -12,8 +12,8 @@ st.set_page_config(page_title="Judô Gestão", layout="centered")
 if not os.path.exists("fotos_alunos"):
     os.makedirs("fotos_alunos")
 
-# --- NOME DO BANCO DE DADOS ---
-NOME_BANCO = "judo_v2.db"
+# --- NOVO NOME DO BANCO DE DADOS PARA ELIMINAR TRAVAMENTOS ---
+NOME_BANCO = "judo_v3.db"
 
 # --- FUNÇÃO DE SINCRONIZAÇÃO COM O GITHUB ---
 def salvar_dados_no_github():
@@ -22,7 +22,7 @@ def salvar_dados_no_github():
             subprocess.run(["git", "config", "--global", "user.email", "dojo_bot@email.com"], check=True)
             subprocess.run(["git", "config", "--global", "user.name", "Dojo Bot"], check=True)
             subprocess.run(["git", "add", NOME_BANCO, "fotos_alunos/*"], check=True)
-            subprocess.run(["git", "commit", "-m", "Auto-update dados dojo v2"], check=True)
+            subprocess.run(["git", "commit", "-m", "Auto-update dados dojo v3"], check=True)
             subprocess.run(["git", "push"], check=True)
         except Exception as e:
             pass
@@ -210,23 +210,22 @@ with aba_lista:
             st.write("📈 **Rendimento Geral**")
             novo_rendimento = st.selectbox("Nível de Rendimento nas Aulas:", lista_rendimento, index=lista_rendimento.index(p_rendimento), key=f"rendimento_{aluno_id}")
             
-            # --- TÓPICO: PONTOS A MELHORAR (REESCRITO EM ESTRUTURA LINEAR ANTIFALHAS) ---
+            # --- TÓPICO: PONTOS A MELHORAR (CAIXAS DE TEXTO EXIBIDAS COM SUCESSO) ---
             st.markdown("---")
             st.write("🎯 **Pontos a Melhorar**")
             
+            # Separa o texto salvo. Se estiver vazio, gera uma linha em branco para digitação inicial
             linhas_melhoria = [linha.strip() for linha in p_melhorias.split("\n")]
-            if not linhas_melhoria or (len(linhas_melhoria) == 1 and linhas_melhoria == ""):
+            if not p_melhorias.strip():
                 linhas_melhoria = [""]
                 
             valores_atualizados = []
             linha_para_excluir = None
             adicionar_nova_linha = False
             
-            # Renderização direta eliminando blocos indentados extras 'with'
+            # Monta os botões e os campos de input de texto reais na tela
             for idx, texto_linha in enumerate(linhas_melhoria):
                 col_btn_x, col_btn_plus, col_input = st.columns([0.15, 0.15, 0.70])
                 
-                # Chamadas diretas do Streamlit na coluna alvo
                 if col_btn_x.button("❌", key=f"del_row_{aluno_id}_{idx}"):
                     linha_para_excluir = idx
-                        
