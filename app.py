@@ -210,7 +210,7 @@ with aba_lista:
             st.write("📈 **Rendimento Geral**")
             novo_rendimento = st.selectbox("Nível de Rendimento nas Aulas:", lista_rendimento, index=lista_rendimento.index(p_rendimento), key=f"rendimento_{aluno_id}")
             
-            # --- TÓPICO: PONTOS A MELHORAR (SINTAXE INLINE BLINDADA CONTRA ERROS) ---
+            # --- TÓPICO: PONTOS A MELHORAR (REESCRITO EM ESTRUTURA LINEAR ANTIFALHAS) ---
             st.markdown("---")
             st.write("🎯 **Pontos a Melhorar**")
             
@@ -222,11 +222,11 @@ with aba_lista:
             linha_para_excluir = None
             adicionar_nova_linha = False
             
-            # Estrutura unificada com sintaxe inline para evitar IndentationError
+            # Renderização direta eliminando blocos indentados extras 'with'
             for idx, texto_linha in enumerate(linhas_melhoria):
                 col_btn_x, col_btn_plus, col_input = st.columns([0.15, 0.15, 0.70])
                 
-                with col_btn_x:
-                    if st.button("❌", key=f"del_row_{aluno_id}_{idx}"): linha_para_excluir = idx
+                # Chamadas diretas do Streamlit na coluna alvo
+                if col_btn_x.button("❌", key=f"del_row_{aluno_id}_{idx}"):
+                    linha_para_excluir = idx
                         
-                with col_btn_plus:
