@@ -155,7 +155,7 @@ with aba_lista:
     alunos = cursor.fetchall()
     opcoes_nivel = ["Nenhum", "Básico", "Intermediário", "Graduado", "Graduado Superior"]
     
-    if not alumnos:
+    if not alunos:
         st.info("Nenhum aluno encontrado.")
     
     for aluno in alunos:
@@ -210,22 +210,23 @@ with aba_lista:
             st.write("📈 **Rendimento Geral**")
             novo_rendimento = st.selectbox("Nível de Rendimento nas Aulas:", lista_rendimento, index=lista_rendimento.index(p_rendimento), key=f"rendimento_{aluno_id}")
             
-            # --- TÓPICO: PONTOS A MELHORAR (TABELA DINÂMICA COM CAIXAS DE TEXTO) ---
+            # --- TÓPICO: PONTOS A MELHORAR (SINTAXE INLINE BLINDADA CONTRA ERROS) ---
             st.markdown("---")
             st.write("🎯 **Pontos a Melhorar**")
             
-            # Converte o texto em lista. Se vazio, garante 1 linha em branco inicial
-            linhas_melhoria = [linha.strip() for line in p_melhorias.split("\n")]
-            if not linhas_melhoria or (len(linhas_melhoria) == 1 and linhas_melhoria[0] == ""):
+            linhas_melhoria = [linha.strip() for linha in p_melhorias.split("\n")]
+            if not linhas_melhoria or (len(linhas_melhoria) == 1 and linhas_melhoria == ""):
                 linhas_melhoria = [""]
                 
             valores_atualizados = []
             linha_para_excluir = None
             adicionar_nova_linha = False
             
-            # Renderiza cada linha como uma caixa de texto com botões à frente
+            # Estrutura unificada com sintaxe inline para evitar IndentationError
             for idx, texto_linha in enumerate(linhas_melhoria):
                 col_btn_x, col_btn_plus, col_input = st.columns([0.15, 0.15, 0.70])
                 
                 with col_btn_x:
-                    if st.button("❌", key=f"del_row_{aluno_id}_{idx}"):
+                    if st.button("❌", key=f"del_row_{aluno_id}_{idx}"): linha_para_excluir = idx
+                        
+                with col_btn_plus:
