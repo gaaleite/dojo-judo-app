@@ -24,6 +24,22 @@ def salvar_dados_no_github():
         except Exception as e:
             pass
 
+# --- FUNÇÃO CALLBACK PARA ADICIONAR MELHORIA (FIXADA NO TOPO) ---
+def adicionar_melhoria_callback(id_do_aluno, lista_atual):
+    chave_input = f"add_item_{id_do_aluno}"
+    texto_digitado = st.session_state[chave_input].strip()
+    if texto_digitado:
+        lista_atual.append(texto_digitado)
+        nova_string = "\n".join(lista_atual)
+        
+        conn_cb = sqlite3.connect("judo_escola.db")
+        cursor_cb = conn_cb.cursor()
+        cursor_cb.execute("UPDATE proficiencia SET melhorias = ? WHERE aluno_id = ?", (nova_string, id_do_aluno))
+        conn_cb.commit()
+        conn_cb.close()
+        
+        st.session_state[chave_input] = ""
+
 # --- CONEXÃO COM O BANCO DE DADOS ---
 def conectar_bd():
     conn = sqlite3.connect("judo_escola.db")
@@ -41,7 +57,6 @@ def conectar_bd():
         )
     ''')
     
-    # Teste estável para a coluna 'faixa'
     try:
         cursor.execute("SELECT faixa FROM alunos LIMIT 1")
     except sqlite3.OperationalError:
@@ -59,14 +74,12 @@ def conectar_bd():
     ''')
     conn.commit()
     
-    # CORREÇÃO DEFINITIVA: Teste estável para a coluna 'rendimento'
     try:
         cursor.execute("SELECT rendimento FROM proficiencia LIMIT 1")
     except sqlite3.OperationalError:
         cursor.execute("ALTER TABLE proficiencia ADD COLUMN rendimento TEXT DEFAULT 'Médio'")
         conn.commit()
         
-    # CORREÇÃO DEFINITIVA: Teste estável para a coluna 'melhorias'
     try:
         cursor.execute("SELECT melhorias FROM proficiencia LIMIT 1")
     except sqlite3.OperationalError:
@@ -223,12 +236,3 @@ with aba_lista:
             
             st.markdown("---")
             st.write("📈 **Rendimento Geral**")
-            novo_rendimento = st.selectbox("Nível de Rendimento nas Aulas:", lista_rendimento, index=lista_rendimento.index(p_rendimento), key=f"rendimento_{aluno_id}")
-            
-            st.markdown("---")
-            st.write("🎯 **Pontos a Melhorar**")
-            
-            itens_melhoria = [item.strip() for item in p_melhorias.split("\n") if item.strip()]
-            itens_restantes = []
-            
-            for idx, item in enumerate(itens_melhoria):
