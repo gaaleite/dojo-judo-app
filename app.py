@@ -75,9 +75,10 @@ lista_graduacoes = [
 
 lista_rendimento = ["Baixo", "Médio", "Bom", "Alto"]
 
+# CORREÇÃO DO SYNTAXERROR: Definição limpa da variável antes das checagens
 def obter_emoji_faixa(graduacao_texto):
-    texto = graduacao_texto.lower()
-    if "vermelha e branca" in text_low:=texto: return "🔴⚪"
+    text_low = graduacao_texto.lower()
+    if "vermelha e branca" in text_low: return "🔴⚪"
     elif "branca / cinza" in text_low: return "⚪🔘"  
     elif "cinza / azul" in text_low: return "🔘🔵"
     elif "azul / amarela" in text_low: return "🔵🟡"
@@ -193,7 +194,7 @@ with aba_lista:
                     cursor.execute("UPDATE alunos SET foto_path = ? WHERE id = ?", (novo_caminho, aluno_id))
                     conn.commit()
                     salvar_dados_no_github()
-                    st.success("Foto atualizada!")
+                    st.success("Foto updated!")
                     st.rerun()
             
             with col2:
@@ -214,7 +215,7 @@ with aba_lista:
             st.write("📈 **Rendimento Geral**")
             novo_rendimento = st.selectbox("Nível de Rendimento nas Aulas:", lista_rendimento, index=lista_rendimento.index(p_rendimento), key=f"rendimento_{aluno_id}")
             
-            # --- TÓPICO PONTOS A MELHORAR (CAIXA DE TEXTO MULTILINHA ESTÁVEL) ---
+            # --- TÓPICO PONTOS A MELHORAR ---
             st.markdown("---")
             st.write("🎯 **Pontos a Melhorar (Escreva cada ponto em uma linha)**")
             
