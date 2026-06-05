@@ -12,19 +12,32 @@ st.set_page_config(page_title="Judô Gestão", layout="centered")
 if not os.path.exists("fotos_alunos"):
     os.makedirs("fotos_alunos")
 
-# --- NOVO NOME DO BANCO DE DADOS PARA ELIMINAR TRAVAMENTOS ---
+# --- NOME DO BANCO DE DADOS OFICIAL ---
 NOME_BANCO = "judo_v3.db"
 
-# --- FUNÇÃO DE SINCRONIZAÇÃO COM O GITHUB ---
+# --- FUNÇÃO DE SINCRONIZAÇÃO SEGURA COM GITHUB SECRETS ---
 def salvar_dados_no_github():
-    if os.path.exists(".git"):
+    # Verifica se as chaves secretas foram cadastradas no painel do Streamlit
+    if "GITHUB_TOKEN" in st.secrets and "REPO_URL" in st.secrets:
         try:
+            token = st.secrets["GITHUB_TOKEN"]
+            repo_url = st.secrets["REPO_URL"]
+            
+            # Formata a URL do repositório injetando o Token de autenticação de escrita
+            authenticated_url = repo_url.replace("https://", f"https://x-oauth-basic:{token}@")
+            
+            # Configura o Git temporário do servidor
             subprocess.run(["git", "config", "--global", "user.email", "dojo_bot@email.com"], check=True)
             subprocess.run(["git", "config", "--global", "user.name", "Dojo Bot"], check=True)
+            
+            # Adiciona as alterações locais do banco e das fotos
             subprocess.run(["git", "add", NOME_BANCO, "fotos_alunos/*"], check=True)
-            subprocess.run(["git", "commit", "-m", "Auto-update dados dojo v3"], check=True)
-            subprocess.run(["git", "push"], check=True)
+            subprocess.run(["git", "commit", "-m", "Auto-update: Dados do Dojo salvos com sucesso"], check=True)
+            
+            # Envia as alterações direto para o GitHub de forma autenticada
+            subprocess.run(["git", "push", authenticated_url], check=True)
         except Exception as e:
+            # Silencia erros para não travar a experiência do usuário se o push falhar temporariamente
             pass
 
 # --- CONEXÃO COM O BANCO DE DADOS ---
@@ -210,22 +223,7 @@ with aba_lista:
             st.write("📈 **Rendimento Geral**")
             novo_rendimento = st.selectbox("Nível de Rendimento nas Aulas:", lista_rendimento, index=lista_rendimento.index(p_rendimento), key=f"rendimento_{aluno_id}")
             
-            # --- TÓPICO: PONTOS A MELHORAR (CAIXAS DE TEXTO EXIBIDAS COM SUCESSO) ---
             st.markdown("---")
             st.write("🎯 **Pontos a Melhorar**")
             
-            # Separa o texto salvo. Se estiver vazio, gera uma linha em branco para digitação inicial
             linhas_melhoria = [linha.strip() for linha in p_melhorias.split("\n")]
-            if not p_melhorias.strip():
-                linhas_melhoria = [""]
-                
-            valores_atualizados = []
-            linha_para_excluir = None
-            adicionar_nova_linha = False
-            
-            # Monta os botões e os campos de input de texto reais na tela
-            for idx, texto_linha in enumerate(linhas_melhoria):
-                col_btn_x, col_btn_plus, col_input = st.columns([0.15, 0.15, 0.70])
-                
-                if col_btn_x.button("❌", key=f"del_row_{aluno_id}_{idx}"):
-                    linha_para_excluir = idx
