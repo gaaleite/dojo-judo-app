@@ -14,13 +14,11 @@ if not os.path.exists("fotos_alunos"):
 
 # --- FUNÇÃO DE SINCRONIZAÇÃO COM O GITHUB (SALVA OS DADOS NA NUVEM) ---
 def salvar_dados_no_github():
-    # Só roda o backup se estiver rodando na nuvem do Streamlit
     if os.path.exists(".git"):
         try:
             subprocess.run(["git", "config", "--global", "user.email", "dojo_bot@email.com"], check=True)
             subprocess.run(["git", "config", "--global", "user.name", "Dojo Bot"], check=True)
             subprocess.run(["git", "add", "judo_escola.db", "fotos_alunos/*"], check=True)
-            # O token do GitHub inserido nas configurações do Streamlit permite o envio
             subprocess.run(["git", "commit", "-m", "Auto-update dados dojo"], check=True)
             subprocess.run(["git", "push"], check=True)
         except Exception as e:
@@ -31,6 +29,7 @@ def conectar_bd():
     conn = sqlite3.connect("judo_escola.db")
     cursor = conn.cursor()
     
+    # 1. Criar tabela de Alunos básica (se não existir)
     cursor.execute('''
         CREATE TABLE IF NOT EXISTS alunos (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -42,12 +41,15 @@ def conectar_bd():
         )
     ''')
     
-    cursor.execute("PRAGMA table_info(alunos)")
-    colunas = [coluna for coluna in cursor.fetchall()]
-    
-    if 'faixa' not in colunas:
+    # CORREÇÃO DEFINITIVA DO ERRO: Verifica se a coluna 'faixa' realmente funciona
+    try:
+        cursor.execute("SELECT faixa FROM alunos LIMIT 1")
+    except sqlite3.OperationalError:
+        # Se der erro operacional significa que a coluna realmente NÃO existe, então adicionamos
         cursor.execute("ALTER TABLE alunos ADD COLUMN faixa TEXT DEFAULT 'Branca (Iniciante)'")
+        conn.commit()
     
+    # 2. Criar tabela de Proficiência (Waza)
     cursor.execute('''
         CREATE TABLE IF NOT EXISTS proficiencia (
             aluno_id INTEGER UNIQUE,
@@ -125,7 +127,7 @@ with aba_cadastro:
                     (aluno_id, "Nenhum", "Nenhum")
                 )
                 conn.commit()
-                salvar_dados_no_github() # Salva na nuvem
+                salvar_dados_no_github()
                 st.success(f"Aluno {nome} cadastrado!")
                 st.rerun()
             else:
@@ -177,7 +179,7 @@ with aba_lista:
                     image.save(novo_caminho)
                     cursor.execute("UPDATE alunos SET foto_path = ? WHERE id = ?", (novo_caminho, aluno_id))
                     conn.commit()
-                    salvar_dados_no_github() # Salva na nuvem
+                    salvar_dados_no_github()
                     st.success("Foto atualizada!")
                     st.rerun()
             
@@ -200,7 +202,7 @@ with aba_lista:
                     cursor.execute("UPDATE alunos SET faixa = ? WHERE id = ?", (nova_faixa, aluno_id))
                     cursor.execute("UPDATE proficiencia SET nage_waza = ?, katame_waza = ? WHERE aluno_id = ?", (novo_nage, novo_katame, aluno_id))
                     conn.commit()
-                    salvar_dados_no_github() # Salva na nuvem
+                    salvar_dados_no_github()
                     st.success("Ficha atualizada!")
                     st.rerun()
             with btn_col2:
@@ -210,7 +212,7 @@ with aba_lista:
                     if a_foto and os.path.exists(a_foto):
                         try: os.remove(a_foto)
                         except: pass
-                    salvar_dados_no_github() # Salva na nuvem
+                    salvar_dados_no_github()
                     st.warning("Aluno removido.")
                     st.rerun()
 
