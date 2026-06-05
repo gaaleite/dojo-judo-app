@@ -226,10 +226,45 @@ with aba_lista:
                 key=f"rendimento_{aluno_id}"
             )
             
-            # --- NOVO TÓPICO 2: LISTA DE MELHORIAS DINÂMICA ---
+                        # --- NOVO TÓPICO 2: LISTA DE MELHORIAS DINÂMICA ---
             st.markdown("---")
             st.write("🎯 **Pontos a Melhorar**")
             
-            # Divide as melhorias salvas por linha
+            # Divide as melhorias salvas por quebra de linha
             itens_melhoria = [item.strip() for item in p_melhorias.split("\n") if item.strip()]
             
+            itens_restantes = []
+            # 1. Primeiro mostra a lista de linhas já criadas com o botão [X]
+            for idx, item in enumerate(itens_melhoria):
+                m_col1, m_col2 = st.columns([0.15, 0.85])
+                with m_col1:
+                    # Botão X para apagar a linha específica
+                    if st.button("❌", key=f"del_item_{aluno_id}_{idx}"):
+                        continue # Ignora o item para removê-lo
+                with m_col2:
+                    st.write(f"• {item}")
+                itens_restantes.append(item)
+            
+            # Atualiza o banco caso alguma linha tenha sido apagada pelo X
+            string_melhorias_final = "\n".join(itens_restantes)
+            if string_melhorias_final != p_melhorias:
+                cursor.execute("UPDATE proficiencia SET melhorias = ? WHERE aluno_id = ?", (string_melhorias_final, aluno_id))
+                conn.commit()
+                st.rerun()
+
+            # 2. Exibe a linha de texto ativa para digitação (sempre limpa e pronta)
+            novo_item = st.text_input(
+                label="Nova melhoria (Digite e aperte Enter):", 
+                placeholder="Insira um ponto a melhorar...", 
+                key=f"add_item_{aluno_id}",
+                label_visibility="collapsed" # Esconde o rótulo para parecer uma linha de tabela limpa
+            )
+            
+            # Captura o Enter, insere na lista e limpa a linha para a próxima digitação
+            if novo_item.strip():
+                itens_restantes.append(novo_item.strip())
+                p_melhorias_atualizado = "\n".join(itens_restantes)
+                cursor.execute("UPDATE proficiencia SET melhorias = ? WHERE aluno_id = ?", (p_melhorias_atualizado, aluno_id))
+                conn.commit()
+                st.rerun()
+
