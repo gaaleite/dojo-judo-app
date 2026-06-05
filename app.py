@@ -24,7 +24,7 @@ def salvar_dados_no_github():
         except Exception as e:
             pass
 
-# --- FUNÇÃO CALLBACK PARA ADICIONAR MELHORIA (FIXADA NO TOPO) ---
+# --- FUNÇÃO CALLBACK PARA ADICIONAR MELHORIA ---
 def adicionar_melhoria_callback(id_do_aluno, lista_atual):
     chave_input = f"add_item_{id_do_aluno}"
     texto_digitado = st.session_state[chave_input].strip()
@@ -192,7 +192,7 @@ with aba_lista:
     for aluno in alunos:
         aluno_id, a_nome, a_idade, a_altura, a_peso, a_foto, a_faixa, n_waza, k_waza, p_rendimento, p_melhorias = aluno
         if not a_faixa or a_faixa not in lista_graduacoes: a_faixa = "Branca (Iniciante)"
-        if not p_rendimento: p_rendimento = "Médio"
+        if not p_rendimento or p_rendimento not in lista_rendimento: p_rendimento = "Médio"
         if not p_melhorias: p_melhorias = ""
         
         emoji_cor = obter_emoji_faixa(a_faixa)
@@ -234,5 +234,5 @@ with aba_lista:
             novo_nage = st.selectbox("Nage-Waza (Projeção):", opcoes_nivel, index=opcoes_nivel.index(n_waza) if n_waza in opcoes_nivel else 0, key=f"nage_{aluno_id}")
             novo_katame = st.selectbox("Katame-Waza (Controle):", opcoes_nivel, index=opcoes_nivel.index(k_waza) if k_waza in opcoes_nivel else 0, key=f"katame_{aluno_id}")
             
+            # --- EXIBIÇÃO DO RENDIMENTO GERAL (DE VOLTA!) ---
             st.markdown("---")
-            st.write("📈 **Rendimento Geral**")
