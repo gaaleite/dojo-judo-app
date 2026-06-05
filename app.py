@@ -29,7 +29,6 @@ def conectar_bd():
     conn = sqlite3.connect("judo_escola.db")
     cursor = conn.cursor()
     
-    # 1. Tabela de Alunos
     cursor.execute('''
         CREATE TABLE IF NOT EXISTS alunos (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -41,14 +40,12 @@ def conectar_bd():
         )
     ''')
     
-    # Validação estrutural da coluna faixa
     try:
         cursor.execute("SELECT faixa FROM alunos LIMIT 1")
     except sqlite3.OperationalError:
         cursor.execute("ALTER TABLE alunos ADD COLUMN faixa TEXT DEFAULT 'Branca (Iniciante)'")
         conn.commit()
     
-    # 2. Tabela de Proficiência (Waza) integrada com Rendimento e Melhorias
     cursor.execute('''
         CREATE TABLE IF NOT EXISTS proficiencia (
             aluno_id INTEGER UNIQUE,
@@ -58,7 +55,6 @@ def conectar_bd():
         )
     ''')
     
-    # Migração automática: Adiciona colunas de rendimento e melhorias se não existirem
     cursor.execute("PRAGMA table_info(proficiencia)")
     colunas_p = [col[1] for col in cursor.fetchall()]
     
@@ -199,7 +195,7 @@ with aba_lista:
                     cursor.execute("UPDATE alunos SET foto_path = ? WHERE id = ?", (novo_caminho, aluno_id))
                     conn.commit()
                     salvar_dados_no_github()
-                    st.success("Foto atualizada!")
+                    st.success("Foto updated!")
                     st.rerun()
             
             with col2:
@@ -216,55 +212,21 @@ with aba_lista:
             novo_nage = st.selectbox("Nage-Waza (Projeção):", opcoes_nivel, index=opcoes_nivel.index(n_waza) if n_waza in opcoes_nivel else 0, key=f"nage_{aluno_id}")
             novo_katame = st.selectbox("Katame-Waza (Controle):", opcoes_nivel, index=opcoes_nivel.index(k_waza) if k_waza in opcoes_nivel else 0, key=f"katame_{aluno_id}")
             
-            # --- NOVO TÓPICO 1: RENDIMENTO ---
             st.markdown("---")
             st.write("📈 **Rendimento Geral**")
-            novo_rendimento = st.selectbox(
-                "Nível de Rendimento nas Aulas:",
-                lista_rendimento,
-                index=lista_rendimento.index(p_rendimento),
-                key=f"rendimento_{aluno_id}"
-            )
+            novo_rendimento = st.selectbox("Nível de Rendimento nas Aulas:", lista_rendimento, index=lista_rendimento.index(p_rendimento), key=f"rendimento_{aluno_id}")
             
-                        # --- NOVO TÓPICO 2: LISTA DE MELHORIAS DINÂMICA ---
+            # --- TÓPICO 2: LISTA DE MELHORIAS DINÂMICA CORRIGIDA (SEM REPETIÇÃO) ---
             st.markdown("---")
             st.write("🎯 **Pontos a Melhorar**")
             
-            # Divide as melhorias salvas por quebra de linha
             itens_melhoria = [item.strip() for item in p_melhorias.split("\n") if item.strip()]
-            
             itens_restantes = []
-            # 1. Primeiro mostra a lista de linhas já criadas com o botão [X]
+            
+            # Exibe as linhas existentes com opção estável de exclusão
             for idx, item in enumerate(itens_melhoria):
                 m_col1, m_col2 = st.columns([0.15, 0.85])
                 with m_col1:
-                    # Botão X para apagar a linha específica
                     if st.button("❌", key=f"del_item_{aluno_id}_{idx}"):
-                        continue # Ignora o item para removê-lo
+                        continue
                 with m_col2:
-                    st.write(f"• {item}")
-                itens_restantes.append(item)
-            
-            # Atualiza o banco caso alguma linha tenha sido apagada pelo X
-            string_melhorias_final = "\n".join(itens_restantes)
-            if string_melhorias_final != p_melhorias:
-                cursor.execute("UPDATE proficiencia SET melhorias = ? WHERE aluno_id = ?", (string_melhorias_final, aluno_id))
-                conn.commit()
-                st.rerun()
-
-            # 2. Exibe a linha de texto ativa para digitação (sempre limpa e pronta)
-            novo_item = st.text_input(
-                label="Nova melhoria (Digite e aperte Enter):", 
-                placeholder="Insira um ponto a melhorar...", 
-                key=f"add_item_{aluno_id}",
-                label_visibility="collapsed" # Esconde o rótulo para parecer uma linha de tabela limpa
-            )
-            
-            # Captura o Enter, insere na lista e limpa a linha para a próxima digitação
-            if novo_item.strip():
-                itens_restantes.append(novo_item.strip())
-                p_melhorias_atualizado = "\n".join(itens_restantes)
-                cursor.execute("UPDATE proficiencia SET melhorias = ? WHERE aluno_id = ?", (p_melhorias_atualizado, aluno_id))
-                conn.commit()
-                st.rerun()
-
