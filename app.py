@@ -29,6 +29,7 @@ def conectar_bd():
     conn = sqlite3.connect("judo_escola.db")
     cursor = conn.cursor()
     
+    # 1. Tabela de Alunos
     cursor.execute('''
         CREATE TABLE IF NOT EXISTS alunos (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -40,12 +41,14 @@ def conectar_bd():
         )
     ''')
     
+    # Teste estável para a coluna 'faixa'
     try:
         cursor.execute("SELECT faixa FROM alunos LIMIT 1")
     except sqlite3.OperationalError:
         cursor.execute("ALTER TABLE alunos ADD COLUMN faixa TEXT DEFAULT 'Branca (Iniciante)'")
         conn.commit()
     
+    # 2. Tabela de Proficiência (Waza)
     cursor.execute('''
         CREATE TABLE IF NOT EXISTS proficiencia (
             aluno_id INTEGER UNIQUE,
@@ -54,16 +57,22 @@ def conectar_bd():
             FOREIGN KEY (aluno_id) REFERENCES alunos (id) ON DELETE CASCADE
         )
     ''')
-    
-    cursor.execute("PRAGMA table_info(proficiencia)")
-    colunas_p = [col for col in cursor.fetchall()]
-    
-    if 'rendimento' not in colunas_p:
-        cursor.execute("ALTER TABLE proficiencia ADD COLUMN rendimento TEXT DEFAULT 'Médio'")
-    if 'melhorias' not in colunas_p:
-        cursor.execute("ALTER TABLE proficiencia ADD COLUMN melhorias TEXT DEFAULT ''")
-        
     conn.commit()
+    
+    # CORREÇÃO DEFINITIVA: Teste estável para a coluna 'rendimento'
+    try:
+        cursor.execute("SELECT rendimento FROM proficiencia LIMIT 1")
+    except sqlite3.OperationalError:
+        cursor.execute("ALTER TABLE proficiencia ADD COLUMN rendimento TEXT DEFAULT 'Médio'")
+        conn.commit()
+        
+    # CORREÇÃO DEFINITIVA: Teste estável para a coluna 'melhorias'
+    try:
+        cursor.execute("SELECT melhorias FROM proficiencia LIMIT 1")
+    except sqlite3.OperationalError:
+        cursor.execute("ALTER TABLE proficiencia ADD COLUMN melhorias TEXT DEFAULT ''")
+        conn.commit()
+        
     return conn, cursor
 
 conn, cursor = conectar_bd()
@@ -222,12 +231,4 @@ with aba_lista:
             itens_melhoria = [item.strip() for item in p_melhorias.split("\n") if item.strip()]
             itens_restantes = []
             
-            # Correção de indentação aplicada aqui na exibição dos itens e botões
             for idx, item in enumerate(itens_melhoria):
-                m_col1, m_col2 = st.columns([0.15, 0.85])
-                with m_col1:
-                    if st.button("❌", key=f"del_item_{aluno_id}_{idx}"):
-                        continue
-                with m_col2:
-                    st.write(f"• {item}")
-                itens_restantes.append(item)
