@@ -12,7 +12,7 @@ st.set_page_config(page_title="Judô Gestão", layout="centered")
 if not os.path.exists("fotos_alunos"):
     os.makedirs("fotos_alunos")
 
-# --- NOME DO NOVO BANCO DE DADOS PARA FORÇAR ATUALIZAÇÃO ---
+# --- NOME DO BANCO DE DADOS ---
 NOME_BANCO = "judo_v2.db"
 
 # --- FUNÇÃO DE SINCRONIZAÇÃO COM O GITHUB ---
@@ -21,35 +21,17 @@ def salvar_dados_no_github():
         try:
             subprocess.run(["git", "config", "--global", "user.email", "dojo_bot@email.com"], check=True)
             subprocess.run(["git", "config", "--global", "user.name", "Dojo Bot"], check=True)
-            # Adiciona o novo banco de dados v2 nas atualizações do repositório
             subprocess.run(["git", "add", NOME_BANCO, "fotos_alunos/*"], check=True)
             subprocess.run(["git", "commit", "-m", "Auto-update dados dojo v2"], check=True)
             subprocess.run(["git", "push"], check=True)
         except Exception as e:
             pass
 
-# --- FUNÇÃO CALLBACK PARA ADICIONAR MELHORIA ---
-def adicionar_melhoria_callback(id_do_aluno, lista_atual):
-    chave_input = f"add_item_{id_do_aluno}"
-    texto_digitado = st.session_state[chave_input].strip()
-    if texto_digitado:
-        lista_atual.append(texto_digitado)
-        nova_string = "\n".join(lista_atual)
-        
-        conn_cb = sqlite3.connect(NOME_BANCO)
-        cursor_cb = conn_cb.cursor()
-        cursor_cb.execute("UPDATE proficiencia SET melhorias = ? WHERE aluno_id = ?", (nova_string, id_do_aluno))
-        conn_cb.commit()
-        conn_cb.close()
-        
-        st.session_state[chave_input] = ""
-
-# --- CONEXÃO COM O BANCO DE DADOS (AGORA COMPLETO DE FATO) ---
+# --- CONEXÃO COM O BANCO DE DADOS ---
 def conectar_bd():
     conn = sqlite3.connect(NOME_BANCO)
     cursor = conn.cursor()
     
-    # Cria a tabela de Alunos já contendo a coluna faixa nativamente
     cursor.execute('''
         CREATE TABLE IF NOT EXISTS alunos (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -62,7 +44,6 @@ def conectar_bd():
         )
     ''')
     
-    # Cria a tabela de Proficiência contendo Rendimento e Melhorias nativamente
     cursor.execute('''
         CREATE TABLE IF NOT EXISTS proficiencia (
             aluno_id INTEGER UNIQUE,
@@ -180,7 +161,6 @@ with aba_lista:
     for aluno in alunos:
         aluno_id, a_nome, a_idade, a_altura, a_peso, a_foto, a_faixa, n_waza, k_waza, p_rendimento, p_melhorias = aluno
         
-        # Valores de segurança
         if not a_faixa or a_faixa not in lista_graduacoes: a_faixa = "Branca (Iniciante)"
         if not n_waza: n_waza = "Nenhum"
         if not k_waza: k_waza = "Nenhum"
@@ -226,7 +206,25 @@ with aba_lista:
             novo_nage = st.selectbox("Nage-Waza (Projeção):", opcoes_nivel, index=opcoes_nivel.index(n_waza), key=f"nage_{aluno_id}")
             novo_katame = st.selectbox("Katame-Waza (Controle):", opcoes_nivel, index=opcoes_nivel.index(k_waza), key=f"katame_{aluno_id}")
             
-            # --- EXIBIÇÃO OBRIGATÓRIA DO RENDIMENTO ---
             st.markdown("---")
             st.write("📈 **Rendimento Geral**")
             novo_rendimento = st.selectbox("Nível de Rendimento nas Aulas:", lista_rendimento, index=lista_rendimento.index(p_rendimento), key=f"rendimento_{aluno_id}")
+            
+            # --- TÓPICO: PONTOS A MELHORAR (TABELA DINÂMICA COM CAIXAS DE TEXTO) ---
+            st.markdown("---")
+            st.write("🎯 **Pontos a Melhorar**")
+            
+            # Converte o texto salvo em lista. Se estiver vazio, garante 1 linha em branco inicial
+            linhas_melhoria = [linha.strip() for linha in p_melhorias.split("\n")]
+            if not linhas_melhoria or (len(linhas_melhoria) == 1 and linhas_melhoria[0] == ""):
+                linhas_melhoria = [""]
+                
+            valores_atualizados = []
+            linha_para_excluir = None
+            adicionar_nova_linha = False
+            
+            # Renderiza cada linha como uma caixa de texto com botões à frente
+            for idx, texto_linha in enumerate(linhas_melhoria):
+                col_btn_x, col_btn_plus, col_input = st.columns([0.15, 0.15, 0.70])
+                
+                with col_btn_x:
