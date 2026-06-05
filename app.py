@@ -172,7 +172,7 @@ with aba_lista:
             SELECT a.id, a.nome, a.idade, a.altura, a.peso, a.foto_path, a.faixa, 
                    p.nage_waza, p.katame_waza, p.rendimento, p.melhorias 
             FROM alunos a 
-            JOIN proficiencia p ON a.id = p.aluno_id 
+            LEFT JOIN proficiencia p ON a.id = p.aluno_id 
             WHERE a.nome LIKE ?
         ''', (f"%{pesquisa}%",))
     else:
@@ -180,7 +180,7 @@ with aba_lista:
             SELECT a.id, a.nome, a.idade, a.altura, a.peso, a.foto_path, a.faixa, 
                    p.nage_waza, p.katame_waza, p.rendimento, p.melhorias 
             FROM alunos a 
-            JOIN proficiencia p ON a.id = p.aluno_id
+            LEFT JOIN proficiencia p ON a.id = p.aluno_id
         ''')
         
     alunos = cursor.fetchall()
@@ -191,7 +191,11 @@ with aba_lista:
     
     for aluno in alunos:
         aluno_id, a_nome, a_idade, a_altura, a_peso, a_foto, a_faixa, n_waza, k_waza, p_rendimento, p_melhorias = aluno
+        
+        # Correção estrutural: Garante que mesmo cadastros antigos sem dados tenham os campos preenchidos
         if not a_faixa or a_faixa not in lista_graduacoes: a_faixa = "Branca (Iniciante)"
+        if not n_waza: n_waza = "Nenhum"
+        if not k_waza: k_waza = "Nenhum"
         if not p_rendimento or p_rendimento not in lista_rendimento: p_rendimento = "Médio"
         if not p_melhorias: p_melhorias = ""
         
@@ -231,8 +235,4 @@ with aba_lista:
             
             st.markdown("---")
             st.write("🥋 **Proficiência de Técnicas (Waza)**")
-            novo_nage = st.selectbox("Nage-Waza (Projeção):", opcoes_nivel, index=opcoes_nivel.index(n_waza) if n_waza in opcoes_nivel else 0, key=f"nage_{aluno_id}")
-            novo_katame = st.selectbox("Katame-Waza (Controle):", opcoes_nivel, index=opcoes_nivel.index(k_waza) if k_waza in opcoes_nivel else 0, key=f"katame_{aluno_id}")
-            
-            # --- EXIBIÇÃO DO RENDIMENTO GERAL (DE VOLTA!) ---
-            st.markdown("---")
+            novo_nage = st.selectbox("Nage-Waza (Projeção):", opcoes_nivel, index=opcoes_nivel.index(n_waza), key=f"nage_{aluno_id}")
