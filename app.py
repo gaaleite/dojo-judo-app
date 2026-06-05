@@ -12,14 +12,18 @@ st.set_page_config(page_title="Judô Gestão", layout="centered")
 if not os.path.exists("fotos_alunos"):
     os.makedirs("fotos_alunos")
 
+# --- NOME DO NOVO BANCO DE DADOS PARA FORÇAR ATUALIZAÇÃO ---
+NOME_BANCO = "judo_v2.db"
+
 # --- FUNÇÃO DE SINCRONIZAÇÃO COM O GITHUB ---
 def salvar_dados_no_github():
     if os.path.exists(".git"):
         try:
             subprocess.run(["git", "config", "--global", "user.email", "dojo_bot@email.com"], check=True)
             subprocess.run(["git", "config", "--global", "user.name", "Dojo Bot"], check=True)
-            subprocess.run(["git", "add", "judo_escola.db", "fotos_alunos/*"], check=True)
-            subprocess.run(["git", "commit", "-m", "Auto-update dados dojo"], check=True)
+            # Adiciona o novo banco de dados v2 nas atualizações do repositório
+            subprocess.run(["git", "add", NOME_BANCO, "fotos_alunos/*"], check=True)
+            subprocess.run(["git", "commit", "-m", "Auto-update dados dojo v2"], check=True)
             subprocess.run(["git", "push"], check=True)
         except Exception as e:
             pass
@@ -32,7 +36,7 @@ def adicionar_melhoria_callback(id_do_aluno, lista_atual):
         lista_atual.append(texto_digitado)
         nova_string = "\n".join(lista_atual)
         
-        conn_cb = sqlite3.connect("judo_escola.db")
+        conn_cb = sqlite3.connect(NOME_BANCO)
         cursor_cb = conn_cb.cursor()
         cursor_cb.execute("UPDATE proficiencia SET melhorias = ? WHERE aluno_id = ?", (nova_string, id_do_aluno))
         conn_cb.commit()
@@ -40,12 +44,12 @@ def adicionar_melhoria_callback(id_do_aluno, lista_atual):
         
         st.session_state[chave_input] = ""
 
-# --- CONEXÃO COM O BANCO DE DADOS ---
+# --- CONEXÃO COM O BANCO DE DADOS (AGORA COMPLETO DE FATO) ---
 def conectar_bd():
-    conn = sqlite3.connect("judo_escola.db")
+    conn = sqlite3.connect(NOME_BANCO)
     cursor = conn.cursor()
     
-    # 1. Tabela de Alunos
+    # Cria a tabela de Alunos já contendo a coluna faixa nativamente
     cursor.execute('''
         CREATE TABLE IF NOT EXISTS alunos (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -53,39 +57,23 @@ def conectar_bd():
             idade INTEGER,
             altura REAL,
             peso REAL,
-            foto_path TEXT
+            foto_path TEXT,
+            faixa TEXT DEFAULT 'Branca (Iniciante)'
         )
     ''')
     
-    try:
-        cursor.execute("SELECT faixa FROM alunos LIMIT 1")
-    except sqlite3.OperationalError:
-        cursor.execute("ALTER TABLE alunos ADD COLUMN faixa TEXT DEFAULT 'Branca (Iniciante)'")
-        conn.commit()
-    
-    # 2. Tabela de Proficiência (Waza)
+    # Cria a tabela de Proficiência contendo Rendimento e Melhorias nativamente
     cursor.execute('''
         CREATE TABLE IF NOT EXISTS proficiencia (
             aluno_id INTEGER UNIQUE,
-            nage_waza TEXT,
-            katame_waza TEXT,
+            nage_waza TEXT DEFAULT 'Nenhum',
+            katame_waza TEXT DEFAULT 'Nenhum',
+            rendimento TEXT DEFAULT 'Médio',
+            melhorias TEXT DEFAULT '',
             FOREIGN KEY (aluno_id) REFERENCES alunos (id) ON DELETE CASCADE
         )
     ''')
     conn.commit()
-    
-    try:
-        cursor.execute("SELECT rendimento FROM proficiencia LIMIT 1")
-    except sqlite3.OperationalError:
-        cursor.execute("ALTER TABLE proficiencia ADD COLUMN rendimento TEXT DEFAULT 'Médio'")
-        conn.commit()
-        
-    try:
-        cursor.execute("SELECT melhorias FROM proficiencia LIMIT 1")
-    except sqlite3.OperationalError:
-        cursor.execute("ALTER TABLE proficiencia ADD COLUMN melhorias TEXT DEFAULT ''")
-        conn.commit()
-        
     return conn, cursor
 
 conn, cursor = conectar_bd()
@@ -192,7 +180,7 @@ with aba_lista:
     for aluno in alunos:
         aluno_id, a_nome, a_idade, a_altura, a_peso, a_foto, a_faixa, n_waza, k_waza, p_rendimento, p_melhorias = aluno
         
-        # Correção estrutural: Garante que mesmo cadastros antigos sem dados tenham os campos preenchidos
+        # Valores de segurança
         if not a_faixa or a_faixa not in lista_graduacoes: a_faixa = "Branca (Iniciante)"
         if not n_waza: n_waza = "Nenhum"
         if not k_waza: k_waza = "Nenhum"
@@ -236,3 +224,9 @@ with aba_lista:
             st.markdown("---")
             st.write("🥋 **Proficiência de Técnicas (Waza)**")
             novo_nage = st.selectbox("Nage-Waza (Projeção):", opcoes_nivel, index=opcoes_nivel.index(n_waza), key=f"nage_{aluno_id}")
+            novo_katame = st.selectbox("Katame-Waza (Controle):", opcoes_nivel, index=opcoes_nivel.index(k_waza), key=f"katame_{aluno_id}")
+            
+            # --- EXIBIÇÃO OBRIGATÓRIA DO RENDIMENTO ---
+            st.markdown("---")
+            st.write("📈 **Rendimento Geral**")
+            novo_rendimento = st.selectbox("Nível de Rendimento nas Aulas:", lista_rendimento, index=lista_rendimento.index(p_rendimento), key=f"rendimento_{aluno_id}")
