@@ -12,7 +12,7 @@ st.set_page_config(page_title="Judô Gestão", layout="centered")
 if not os.path.exists("fotos_alunos"):
     os.makedirs("fotos_alunos")
 
-# --- FUNÇÃO DE SINCRONIZAÇÃO COM O GITHUB (SALVA OS DADOS NA NUVEM) ---
+# --- FUNÇÃO DE SINCRONIZAÇÃO COM O GITHUB ---
 def salvar_dados_no_github():
     if os.path.exists(".git"):
         try:
@@ -29,7 +29,7 @@ def conectar_bd():
     conn = sqlite3.connect("judo_escola.db")
     cursor = conn.cursor()
     
-    # 1. Criar tabela de Alunos básica (se não existir)
+    # 1. Tabela de Alunos
     cursor.execute('''
         CREATE TABLE IF NOT EXISTS alunos (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -41,15 +41,14 @@ def conectar_bd():
         )
     ''')
     
-    # CORREÇÃO DEFINITIVA DO ERRO: Verifica se a coluna 'faixa' realmente funciona
+    # Validação estrutural da coluna faixa
     try:
         cursor.execute("SELECT faixa FROM alunos LIMIT 1")
     except sqlite3.OperationalError:
-        # Se der erro operacional significa que a coluna realmente NÃO existe, então adicionamos
         cursor.execute("ALTER TABLE alunos ADD COLUMN faixa TEXT DEFAULT 'Branca (Iniciante)'")
         conn.commit()
     
-    # 2. Criar tabela de Proficiência (Waza)
+    # 2. Tabela de Proficiência (Waza) integrada com Rendimento e Melhorias
     cursor.execute('''
         CREATE TABLE IF NOT EXISTS proficiencia (
             aluno_id INTEGER UNIQUE,
@@ -58,6 +57,16 @@ def conectar_bd():
             FOREIGN KEY (aluno_id) REFERENCES alunos (id) ON DELETE CASCADE
         )
     ''')
+    
+    # Migração automática: Adiciona colunas de rendimento e melhorias se não existirem
+    cursor.execute("PRAGMA table_info(proficiencia)")
+    colunas_p = [col[1] for col in cursor.fetchall()]
+    
+    if 'rendimento' not in colunas_p:
+        cursor.execute("ALTER TABLE proficiencia ADD COLUMN rendimento TEXT DEFAULT 'Médio'")
+    if 'melhorias' not in colunas_p:
+        cursor.execute("ALTER TABLE proficiencia ADD COLUMN melhorias TEXT DEFAULT ''")
+        
     conn.commit()
     return conn, cursor
 
@@ -72,6 +81,8 @@ lista_graduacoes = [
     "Vermelha e branca (6º dan)", "Vermelha e branca (7º dan)", "Vermelha e branca (8º dan)",
     "Vermelha (9º dan)", "Vermelha (10º dan)"
 ]
+
+lista_rendimento = ["Baixo", "Médio", "Bom", "Alto"]
 
 def obter_emoji_faixa(graduacao_texto):
     texto = graduacao_texto.lower()
@@ -123,8 +134,8 @@ with aba_cadastro:
                 aluno_id = cursor.lastrowid
                 
                 cursor.execute(
-                    "INSERT INTO proficiencia (aluno_id, nage_waza, katame_waza) VALUES (?, ?, ?)",
-                    (aluno_id, "Nenhum", "Nenhum")
+                    "INSERT INTO proficiencia (aluno_id, nage_waza, katame_waza, rendimento, melhorias) VALUES (?, ?, ?, ?, ?)",
+                    (aluno_id, "Nenhum", "Nenhum", "Médio", "")
                 )
                 conn.commit()
                 salvar_dados_no_github()
@@ -140,13 +151,18 @@ with aba_lista:
     
     if pesquisa:
         cursor.execute('''
-            SELECT a.id, a.nome, a.idade, a.altura, a.peso, a.foto_path, a.faixa, p.nage_waza, p.katame_waza 
-            FROM alunos a JOIN proficiencia p ON a.id = p.aluno_id WHERE a.nome LIKE ?
+            SELECT a.id, a.nome, a.idade, a.altura, a.peso, a.foto_path, a.faixa, 
+                   p.nage_waza, p.katame_waza, p.rendimento, p.melhorias 
+            FROM alunos a 
+            JOIN proficiencia p ON a.id = p.aluno_id 
+            WHERE a.nome LIKE ?
         ''', (f"%{pesquisa}%",))
     else:
         cursor.execute('''
-            SELECT a.id, a.nome, a.idade, a.altura, a.peso, a.foto_path, a.faixa, p.nage_waza, p.katame_waza 
-            FROM alunos a JOIN proficiencia p ON a.id = p.aluno_id
+            SELECT a.id, a.nome, a.idade, a.altura, a.peso, a.foto_path, a.faixa, 
+                   p.nage_waza, p.katame_waza, p.rendimento, p.melhorias 
+            FROM alunos a 
+            JOIN proficiencia p ON a.id = p.aluno_id
         ''')
         
     alunos = cursor.fetchall()
@@ -156,8 +172,11 @@ with aba_lista:
         st.info("Nenhum aluno encontrado.")
     
     for aluno in alunos:
-        aluno_id, a_nome, a_idade, a_altura, a_peso, a_foto, a_faixa, n_waza, k_waza = aluno
+        aluno_id, a_nome, a_idade, a_altura, a_peso, a_foto, a_faixa, n_waza, k_waza, p_rendimento, p_melhorias = aluno
         if not a_faixa or a_faixa not in lista_graduacoes: a_faixa = "Branca (Iniciante)"
+        if not p_rendimento: p_rendimento = "Médio"
+        if not p_melhorias: p_melhorias = ""
+        
         emoji_cor = obter_emoji_faixa(a_faixa)
         
         with st.expander(f"{emoji_cor} {a_nome} | {a_faixa}"):
@@ -191,29 +210,26 @@ with aba_lista:
             st.markdown("---")
             st.write("🏅 **Graduação do Aluno**")
             nova_faixa = st.selectbox("Selecione a Graduação Atual:", lista_graduacoes, index=lista_graduacoes.index(a_faixa), key=f"faixa_{aluno_id}")
+            
             st.markdown("---")
             st.write("🥋 **Proficiência de Técnicas (Waza)**")
             novo_nage = st.selectbox("Nage-Waza (Projeção):", opcoes_nivel, index=opcoes_nivel.index(n_waza) if n_waza in opcoes_nivel else 0, key=f"nage_{aluno_id}")
             novo_katame = st.selectbox("Katame-Waza (Controle):", opcoes_nivel, index=opcoes_nivel.index(k_waza) if k_waza in opcoes_nivel else 0, key=f"katame_{aluno_id}")
             
-            btn_col1, btn_col2 = st.columns(2)
-            with btn_col1:
-                if st.button("💾 Salvar Ficha", key=f"btn_{aluno_id}", use_container_width=True):
-                    cursor.execute("UPDATE alunos SET faixa = ? WHERE id = ?", (nova_faixa, aluno_id))
-                    cursor.execute("UPDATE proficiencia SET nage_waza = ?, katame_waza = ? WHERE aluno_id = ?", (novo_nage, novo_katame, aluno_id))
-                    conn.commit()
-                    salvar_dados_no_github()
-                    st.success("Ficha atualizada!")
-                    st.rerun()
-            with btn_col2:
-                if st.button("❌ Excluir Aluno", key=f"del_{aluno_id}", use_container_width=True):
-                    cursor.execute("DELETE FROM alunos WHERE id = ?", (aluno_id,))
-                    conn.commit()
-                    if a_foto and os.path.exists(a_foto):
-                        try: os.remove(a_foto)
-                        except: pass
-                    salvar_dados_no_github()
-                    st.warning("Aluno removido.")
-                    st.rerun()
-
-conn.close()
+            # --- NOVO TÓPICO 1: RENDIMENTO ---
+            st.markdown("---")
+            st.write("📈 **Rendimento Geral**")
+            novo_rendimento = st.selectbox(
+                "Nível de Rendimento nas Aulas:",
+                lista_rendimento,
+                index=lista_rendimento.index(p_rendimento),
+                key=f"rendimento_{aluno_id}"
+            )
+            
+            # --- NOVO TÓPICO 2: LISTA DE MELHORIAS DINÂMICA ---
+            st.markdown("---")
+            st.write("🎯 **Pontos a Melhorar**")
+            
+            # Divide as melhorias salvas por linha
+            itens_melhoria = [item.strip() for item in p_melhorias.split("\n") if item.strip()]
+            
